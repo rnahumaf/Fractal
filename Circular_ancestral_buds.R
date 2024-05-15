@@ -1,65 +1,63 @@
-D <- 400 # Diâmetro do círculo
-loops <- 10000 # Pontos no círculo
-passo <- 1 # Distância percorrida por cada passo do ponto em direção ao centro gravitacional.
+# Definindo o diâmetro do círculo e o número de pontos a serem adicionados
+D <- 400
+loops <- 10000
+passo <- 1  # Tamanho do passo em direção ao centro gravitacional
 
-# Consequence
-m <- matrix(rep(0, D^2), nrow=D)
-#m2 <- matrix(rep(0, D^2), nrow=D) # matrix auxiliar
-r <- D*0.4
-atual_i <- D/2
-atual_j <- D/2
-m[atual_i, atual_j] <- 1 # Indica o primeiro centro de massa
-vetor_i <- 0
-vetor_j <- 0
-blow <- 1
+# Inicializando a matriz que representará o círculo
+m <- matrix(0, nrow=D, ncol=D)
+r <- D * 0.4  # Raio do círculo (40% do diâmetro)
+centro_i <- D / 2  # Coordenada i do centro do círculo
+centro_j <- D / 2  # Coordenada j do centro do círculo
 
+# Marcando o ponto inicial no centro do círculo
+atual_i <- centro_i
+atual_j <- centro_j
+m[atual_i, atual_j] <- 1
+
+# Loop principal para adicionar pontos
 for(counts in 1:loops){
+  # Gerando uma posição aleatória no círculo em radianos
+  posic <- runif(1) * 2
   
-  # Armazena as coordenadas do ponto em uma lista cumulativa, para cálculo do centro de massa
-  #vetor_i[counts] <- atual_i
-  #vetor_j[counts] <- atual_j
+  # Calculando a posição inicial do ponto na borda do círculo
+  atual_i <- centro_i - sinpi(posic) * r
+  atual_j <- centro_j - cospi(posic) * r
   
-  # Determina posição no círculo, em graus radianos adaptados (/pi)
-  posic <- runif(1)*2
-  
-  # Calcula posição relativa, em relação ao centro do círculo
-  #atual_i <- sinpi(posic)*r 
-  #atual_j <- cospi(posic)*r 
-  # Posiciona o ponto no local aproximado (ceiling)
-  # m2[(atual_i <- D/2 - sinpi(posic)*r), (atual_j <- D/2 - cospi(posic)*r)] <- 1
-  atual_i <- D/2 - sinpi(posic)*r
-  atual_j <- D/2 - cospi(posic)*r
-  
-  # Centro de massa ---> i = sum(vetor_i)/length(vetor_i); j = sum(vetor_j)/length(vetor_j)
-  # m2[ceiling(sum(vetor_i)/length(vetor_i)), ceiling(sum(vetor_j)/length(vetor_j))] <- 1 # Centro de massa
-  
+  # Loop para mover o ponto em direção ao centro do círculo
   repeat{
+    # Calculando a diferença entre a posição atual e o centro do círculo
+    delta_i <- centro_i - atual_i
+    delta_j <- centro_j - atual_j
     
-    # Anda um passo de "passo" unidades em direção ao centro de massa
-    # Fórmula de plano cartesiano: ix = i1 + (i2-i1)*passo/sqrt((j2-j1)^2 + (i2-i1)^2) // Considerar i2,j2 = centro de massa
-    #atual_i <- atual_i + (sum(vetor_i)/length(vetor_i)-atual_i)*passo/sqrt((sum(vetor_j)/length(vetor_j)-atual_j)^2 + (sum(vetor_i)/length(vetor_i)-atual_i)^2)
-    #atual_j <- atual_j + (sum(vetor_j)/length(vetor_j)-atual_j)*passo/sqrt((sum(vetor_i)/length(vetor_i)-atual_i)^2 + (sum(vetor_j)/length(vetor_j)-atual_j)^2)
+    # Calculando a distância até o centro do círculo
+    distancia <- sqrt(delta_i^2 + delta_j^2)
     
-    atual_i <- atual_i + (D/2 - atual_i)*passo/sqrt((D/2-atual_j)^2 + (D/2-atual_i)^2)
-    atual_j <- atual_j + (D/2 - atual_j)*passo/sqrt((D/2-atual_i)^2 + (D/2-atual_j)^2)
-      
-    # Registrar o passo na matriz auxiliar
-    #m2[(atual_i), (atual_j)] <- 1
+    # Atualizando a posição do ponto, movendo-o um passo em direção ao centro
+    atual_i <- atual_i + (delta_i * passo / distancia)
+    atual_j <- atual_j + (delta_j * passo / distancia)
     
-    # Parar se chegar próximo a um ponto adjacente e registrar na matrix original
-    if(any(m[(atual_i-1):(atual_i+1), (atual_j-1):(atual_j+1)]>=1)){
-      twist <- sample(c(0,1), 1, prob=c(100, 1))
+    # Arredondando a posição atual para os índices da matriz
+    i_adj <- round(atual_i)
+    j_adj <- round(atual_j)
+    
+    # Verificando se o ponto está próximo a um ponto existente na matriz
+    if(any(m[(i_adj-1):(i_adj+1), (j_adj-1):(j_adj+1)] >= 1)){
+      # Decidindo se o ponto deve ser atribuído com base no ponto adjacente ou ser um valor aleatório
+      twist <- sample(c(0, 1), 1, prob=c(100, 1))
       if(twist == 0){
-        m[(atual_i), (atual_j)] <- max(m[(atual_i-1):(atual_i+1), (atual_j-1):(atual_j+1)])
+        # Atribuindo o valor do ponto adjacente máximo
+        m[i_adj, j_adj] <- max(m[(i_adj-1):(i_adj+1), (j_adj-1):(j_adj+1)])
       } else {
-        m[(atual_i), (atual_j)] <- sample(2:200, 1)
-        # m[(atual_i), (atual_j)] <- 10^blow; blow <- blow + 1 # Usar em conjunto com a gravidade ativada
+        # Atribuindo um valor aleatório entre 2 e 200
+        m[i_adj, j_adj] <- sample(2:200, 1)
       }
-      break
+      break  # Saindo do loop repeat
     }
   }
 }
 
+# Criando uma paleta de cores para visualização
 colfunc <- colorRampPalette(c("black", "white", "red"), bias = 7.5)
-#image(t(apply(m, 2, rev)), asp = 1, axes=FALSE, col = c("black", "white"))
-image(t(apply(m, 2, rev)), asp = 1, axes=FALSE, col = colfunc(300))
+
+# Plotando a matriz resultante como uma imagem
+image(t(apply(m, 2, rev)), asp=1, axes=FALSE, col=colfunc(300))
